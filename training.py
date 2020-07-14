@@ -13,8 +13,8 @@ from tensorflow import feature_column
 from tensorflow.keras import layers, regularizers
 from tensorflow.keras.constraints import max_norm
 os.chdir('/workspaces/MachineLearning/Kaggle/Kaggle-Disaster-Tweets/')
-# %load_ext autoreload
-# %autoreload 2
+%load_ext autoreload
+%autoreload 2
 
 # %%
 #Data loading
@@ -24,7 +24,8 @@ submission_data = pd.read_csv('./data/test.csv')
 #Globals
 TEST_SIZE = 0.1
 RAND = 10
-features = ['text']
+# features = ['text']
+features = ['keyword']
 target = ['target']
 
 # Exploring
@@ -68,8 +69,8 @@ target = ['target']
 train_df = pre_process.create_df(train_data, features, target)
 submission_df = pre_process.create_df(submission_data, features, target)
 train_raw, test_raw = train_test_split(train_df, test_size=TEST_SIZE, random_state=RAND)
-train = pre_process.create_embedding_df(train_raw, 'text')
-test = pre_process.create_embedding_df(test_raw, 'text')
+train = pre_process.create_embedding_df(train_raw, features)
+test = pre_process.create_embedding_df(test_raw, features)
 x_train = train[features].values
 y_train = train[target].values
 x_test= test[features].values
@@ -79,16 +80,18 @@ y_test= test[target].values
 # %%
 # Train Model
 # Training settings
-BATCH_SIZE = 100
-EPOCS = 10
-LEARNING_RATE = 0.001
+BATCH_SIZE = 10
+EPOCS = 60
+LEARNING_RATE = 0.0001
 DROPOUT = 0
-L2 = 1e-8
+SHUFFLE = False
+L2 = 1e-4
 
 opt = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
 # model
 model = tf.keras.Sequential([
-#   layers.Dropout(DROPOUT),
+  layers.Dropout(DROPOUT),
+  layers.Dense(256, activation='relu', activity_regularizer=regularizers.l2(L2)),
   layers.Dense(256, activation='relu', activity_regularizer=regularizers.l2(L2)),
   layers.Dense(1, activation='sigmoid')
 ])
@@ -100,7 +103,8 @@ model.compile(optimizer=opt,
 # train           
 history = model.fit(x_train, y_train,
           validation_data=(x_test, y_test),
-          epochs=EPOCS)
+          epochs=EPOCS,
+          shuffle=SHUFFLE)
 
 # plot
 plt.plot(history.history['loss'])
@@ -121,6 +125,7 @@ plt.show()
 
 # Evaluate
 loss, accuracy = model.evaluate(x_test, y_test)
+# y_pred = model.predict(x_test)
 y_pred = model.predict_classes(x_test)
 con_mat = tf.math.confusion_matrix(labels=y_test.ravel(), predictions=y_pred.ravel()).numpy()
 target_names = ['not a disaster', 'disaster']
