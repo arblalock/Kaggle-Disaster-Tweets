@@ -22,3 +22,8 @@ def create_embedding_df(dataframe, text_cols):
     
         result_df[text_col] = np.array(emb_array)
     return result_df
+
+def UniversalEmbedding(x):
+    print(x)
+    return embed(tf.squeeze(tf.cast(x, tf.string)), 
+    	signature="default", as_dict=True)["default"]

@@ -24,8 +24,8 @@ submission_data = pd.read_csv('./data/test.csv')
 #Globals
 TEST_SIZE = 0.1
 RAND = 10
-# features = ['text']
-features = ['keyword']
+features = ['text']
+# features = ['keyword', 'location', 'text']
 target = ['target']
 
 # Exploring
@@ -69,30 +69,32 @@ target = ['target']
 train_df = pre_process.create_df(train_data, features, target)
 submission_df = pre_process.create_df(submission_data, features, target)
 train_raw, test_raw = train_test_split(train_df, test_size=TEST_SIZE, random_state=RAND)
-train = pre_process.create_embedding_df(train_raw, features)
-test = pre_process.create_embedding_df(test_raw, features)
-x_train = train[features].values
-y_train = train[target].values
-x_test= test[features].values
-y_test= test[target].values
+# train = pre_process.create_embedding_df(train_raw, features)
+# test = pre_process.create_embedding_df(test_raw, features)
+x_train = train_raw[features].values.ravel()
+y_train = train_raw[target].values.ravel()
+x_test= test_raw[features].values.ravel()
+y_test= test_raw[target].values.ravel()
 
 
 # %%
 # Train Model
 # Training settings
-BATCH_SIZE = 10
-EPOCS = 60
+BATCH_SIZE = 1
+EPOCS = 30
 LEARNING_RATE = 0.0001
 DROPOUT = 0
-SHUFFLE = False
-L2 = 1e-4
+SHUFFLE = True
+EMBED_SIZE = 512
+L2 = 1e-3
 
 opt = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
 # model
 model = tf.keras.Sequential([
+    layers.Lambda(pre_process.UniversalEmbedding,
+	output_shape=(EMBED_SIZE,))
   layers.Dropout(DROPOUT),
-  layers.Dense(256, activation='relu', activity_regularizer=regularizers.l2(L2)),
-  layers.Dense(256, activation='relu', activity_regularizer=regularizers.l2(L2)),
+  layers.Dense(128, activation='relu', activity_regularizer=regularizers.l2(L2)),
   layers.Dense(1, activation='sigmoid')
 ])
 
