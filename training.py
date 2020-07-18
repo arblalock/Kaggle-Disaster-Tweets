@@ -22,6 +22,8 @@ train_data = pd.read_csv('./data/train.csv')
 submission_data = pd.read_csv('./data/test.csv')
 
 #Globals
+MODEL_SAVE_PATH = './saved_models/'
+SUBM_SAVE_PATH = './submissions/'
 TEST_SIZE = 0.1
 RAND = 10
 features = ['text']
@@ -69,8 +71,6 @@ target = ['target']
 train_df = pre_process.create_df(train_data, features, target)
 submission_df = pre_process.create_df(submission_data, features, target)
 train_raw, test_raw = train_test_split(train_df, test_size=TEST_SIZE, random_state=RAND)
-# train = pre_process.create_embedding_df(train_raw, features)
-# test = pre_process.create_embedding_df(test_raw, features)
 x_train = train_raw[features].values.ravel()
 y_train = train_raw[target].values.ravel()
 x_test= test_raw[features].values.ravel()
@@ -80,8 +80,8 @@ y_test= test_raw[target].values.ravel()
 # %%
 # Train Model
 # Training settings
-BATCH_SIZE = 1
-EPOCS = 30
+BATCH_SIZE = 32
+EPOCS = 14
 LEARNING_RATE = 0.0001
 DROPOUT = 0
 SHUFFLE = True
@@ -91,12 +91,10 @@ L2 = 1e-3
 opt = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
 # model
 model = tf.keras.Sequential([
-    layers.Lambda(pre_process.UniversalEmbedding,
-	output_shape=(EMBED_SIZE,))
-  layers.Dropout(DROPOUT),
+    layers.Lambda(pre_process.universal_embedding, output_shape=(EMBED_SIZE,)),
   layers.Dense(128, activation='relu', activity_regularizer=regularizers.l2(L2)),
-  layers.Dense(1, activation='sigmoid')
-])
+  layers.Dense(1, activation='sigmoid')]
+)
 
 model.compile(optimizer=opt,
               loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
@@ -127,8 +125,25 @@ plt.show()
 
 # Evaluate
 loss, accuracy = model.evaluate(x_test, y_test)
-# y_pred = model.predict(x_test)
 y_pred = model.predict_classes(x_test)
 con_mat = tf.math.confusion_matrix(labels=y_test.ravel(), predictions=y_pred.ravel()).numpy()
 target_names = ['not a disaster', 'disaster']
 print(classification_report(y_test, y_pred, target_names=target_names))
+
+# %%
+# Save Model
+MODEL_NAME = '7_18_submission'
+model.save(MODEL_SAVE_PATH+MODEL_NAME)
+
+# %%
+# Load Model
+MODEL_NAME = '7_18_submission'
+model = tf.keras.models.load_model(MODEL_SAVE_PATH+MODEL_NAME)
+
+
+# %%
+# Get Predictions
+predictions = model.predict_classes(submission_df)
+
+output = pd.DataFrame({'id': submission_data.id, 'target': np.ravel(predictions)})
+output.to_csv(SUBM_SAVE_PATH + MODEL_NAME + '.csv', index=False)
